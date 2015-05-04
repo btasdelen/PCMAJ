@@ -10,31 +10,41 @@ ISX_AXIS BIT 0
 IS_FW BIT 1
 
 ORG 0
-SJMP MAIN
+LJMP MAIN
 ORG 000BH
 PWM_PERIOD_END:
 	CPL ISX_AXIS	;change axis
-	SETB TR1	;Period ended, will start sending new duty cycle
-	SJMP BWX	;Decide where to send PWM
+	CLR TR0	
+	DEC DUTY_CYCLE_HI
+	LJMP BWX	;Decide where to send PWM
 
 
 ORG 001BH
 DUTY_CYCLE_END:
-	SJMP CLEAR_PWM	;Duty cycle ended, we will wait till to the new period
+	LJMP CLEAR_PWM	;Duty cycle ended, we will wait till to the new period
 
 ORG 00ABH
 MAIN:
+	MOV DUTY_CYCLE_HI, #0F8h
+	MOV DUTY_CYCLE_LO, #0CDh
 	MOV TMOD, #00010001b
-	MOV TH0, #PWM_PERIOD_HI
-	MOV TL0, #PWM_PERIOD_LO
-	MOV TH1, DUTY_CYCLE_HI
-	MOV TL1, DUTY_CYCLE_LO
-	MOV IE, #10001010b
-	SETB ISX_AXIS
-	SETB TR1
-	SETB TR0
+
+
 	ANL P2, #0F0h			;Clear pins so that first cycle will be empty
-	SJMP LOOP
+	ACALL LOOP
+	ACALL DELAY
+	MOV DUTY_CYCLE_HI, #0FCh
+	MOV DUTY_CYCLE_LO, #067h
+	ACALL LOOP
+	MOV DUTY_CYCLE_HI, #0FBh
+	MOV DUTY_CYCLE_LO, #0AFh
+	ACALL DELAY
+	ACALL LOOP
+	MOV DUTY_CYCLE_HI, #0F9h
+	MOV DUTY_CYCLE_LO, #086h
+	ACALL DELAY
+	ACALL LOOP
+	SJMP $
 	
 BWX:	JNB ISX_AXIS, BWY		;Check if we will send x axis
 	JB IS_FW, FWX			;Check if we will turn forward or backwards
@@ -73,7 +83,34 @@ NEXT_CYCLE:
 	MOV TL1, DUTY_CYCLE_LO
 	RETI
 	
-	LOOP:
-		SJMP $
+LOOP:
+	MOV TH0, #PWM_PERIOD_HI
+	MOV TL0, #PWM_PERIOD_LO
+	MOV TH1, DUTY_CYCLE_HI
+	MOV TL1, DUTY_CYCLE_LO
+	MOV IE, #10001010b
+	SETB ISX_AXIS
+	SETB TR0
+	SETB TR1
+	RET
+
+DELAY:
+; START: Wait loop, time: 500 ms
+; Clock: 11059 kHz (12 / MC)
+; Used registers: R7, R6, R5, R3
+	MOV	R3, #00Bh
+	MOV	R5, #01Dh
+	MOV	R6, #0F0h
+	MOV	R7, #001h
+	NOP
+	DJNZ	R7, $
+	DJNZ	R6, $-5
+	DJNZ	R5, $-9
+	DJNZ	R3, $-13
+	MOV	R7, #0DBh
+	DJNZ	R7, $
+	NOP
+; Rest: 723.393 ns
+; END: Wait loop
 
 END

@@ -11,73 +11,110 @@ pwm                                                                             
   0001                  10     IS_FW BIT 1
                         11
                         12     ORG 0
-0000 801B               13     SJMP MAIN
+0000 0200AB             13     LJMP MAIN
                         14     ORG 000BH
                         15     PWM_PERIOD_END:
-000B B200               16             CPL ISX_AXIS
-000D D28E               17             SETB TR1
-000F 8029               18             SJMP BWX
-                        19
+000B B200               16             CPL ISX_AXIS    ;change axis
+000D C28C               17             CLR TR0
+000F 1502               18             DEC DUTY_CYCLE_HI
+0011 0200D9             19             LJMP BWX        ;Decide where to send PWM
                         20
-                        21     ORG 001BH
-                        22     DUTY_CYCLE_END:
-001B 803A               23             SJMP CLEAR_PWM
-                        24
+                        21
+                        22     ORG 001BH
+                        23     DUTY_CYCLE_END:
+001B 0200F6             24             LJMP CLEAR_PWM  ;Duty cycle ended, we will wait till to the new period
                         25
-                        26     MAIN:
-001D 758911             27             MOV TMOD, #00010001b
-0020 758CCB             28             MOV TH0, #PWM_PERIOD_HI
-0023 758AEB             29             MOV TL0, #PWM_PERIOD_LO
-0026 85028D             30             MOV TH1, DUTY_CYCLE_HI
-0029 85038B             31             MOV TL1, DUTY_CYCLE_LO
-002C 75A88A             32             MOV IE, #10001010b
-002F D200               33             SETB ISX_AXIS
-0031 D28E               34             SETB TR1
-0033 D28C               35             SETB TR0
-0035 53A00F             36             ANL P2, #0Fh                    ;Clear pins so that first cycle will be empty
-0038 8035               37             SJMP LOOP
-                        38
-003A 30000D             39     BWX:    JNB ISX_AXIS, BWY
-003D 200105             40             JB IS_FW, FWX
-0040 D2A1               41             SETB PWM1_BW
-0042 C2A0               42             CLR PWM1_FW
-0044 32                 43             RETI
-                        44     FWX:
-0045 D2A0               45             SETB PWM1_FW
-0047 C2A1               46             CLR PWM1_BW
-0049 32                 47             RETI
+                        26     ORG 00ABH
+                        27     MAIN:
+00AB 7502F8             28             MOV DUTY_CYCLE_HI, #0F8h
+00AE 7503CD             29             MOV DUTY_CYCLE_LO, #0CDh
+00B1 758911             30             MOV TMOD, #00010001b
+                        31
+                        32
+00B4 53A0F0             33             ANL P2, #0F0h                   ;Clear pins so that first cycle will be empty
+00B7 310E               34             ACALL LOOP
+00B9 3124               35             ACALL DELAY
+00BB 7502FC             36             MOV DUTY_CYCLE_HI, #0FCh
+00BE 750367             37             MOV DUTY_CYCLE_LO, #067h
+00C1 310E               38             ACALL LOOP
+00C3 7502FB             39             MOV DUTY_CYCLE_HI, #0FBh
+00C6 7503AF             40             MOV DUTY_CYCLE_LO, #0AFh
+00C9 3124               41             ACALL DELAY
+00CB 310E               42             ACALL LOOP
+00CD 7502F9             43             MOV DUTY_CYCLE_HI, #0F9h
+00D0 750386             44             MOV DUTY_CYCLE_LO, #086h
+00D3 3124               45             ACALL DELAY
+00D5 310E               46             ACALL LOOP
+00D7 80FE               47             SJMP $
                         48
-004A 200105             49     BWY:    JB IS_FW, FWY
-004D D2A3               50             SETB PWM2_BW
-004F C2A2               51             CLR PWM2_FW
-0051 32                 52             RETI
-                        53     FWY:
-0052 D2A2               54             SETB PWM2_FW
-0054 C2A3               55             CLR PWM2_BW
-                        56
-0056 32                 57             RETI
+00D9 30000D             49     BWX:    JNB ISX_AXIS, BWY               ;Check if we will send x axis
+00DC 200105             50             JB IS_FW, FWX                   ;Check if we will turn forward or backwards
+00DF D2A1               51             SETB PWM1_BW
+00E1 C2A0               52             CLR PWM1_FW
+00E3 32                 53             RETI
+                        54     FWX:
+00E4 D2A0               55             SETB PWM1_FW
+00E6 C2A1               56             CLR PWM1_BW
+00E8 32                 57             RETI
                         58
-                        59     CLEAR_PWM:
-0057 300006             60             JNB ISX_AXIS, CLEAR_FWY
-005A C2A1               61             CLR PWM1_BW
-005C C2A0               62             CLR PWM1_FW
-005E 8006               63             SJMP NEXT_CYCLE
-                        64
-                        65     CLEAR_FWY:
-0060 C2A2               66             CLR PWM2_FW
-0062 C2A3               67             CLR PWM2_BW
-0064 8000               68             SJMP NEXT_CYCLE
-                        69
-                        70     NEXT_CYCLE:
-0066 C28E               71             CLR TR1
-0068 85028D             72             MOV TH1, DUTY_CYCLE_HI
-006B 85038B             73             MOV TL1, DUTY_CYCLE_LO
-006E 32                 74             RETI
-                        75
-                        76             LOOP:
-006F 80FE               77                     SJMP $
-                        78
-                        79     END
+00E9 200105             59     BWY:    JB IS_FW, FWY
+00EC D2A3               60             SETB PWM2_BW
+00EE C2A2               61             CLR PWM2_FW
+00F0 32                 62             RETI
+                        63     FWY:
+00F1 D2A2               64             SETB PWM2_FW
+00F3 C2A3               65             CLR PWM2_BW
+                        66
+00F5 32                 67             RETI
+                        68
+                        69     CLEAR_PWM:
+00F6 300006             70             JNB ISX_AXIS, CLEAR_FWY
+00F9 C2A1               71             CLR PWM1_BW
+00FB C2A0               72             CLR PWM1_FW
+00FD 8006               73             SJMP NEXT_CYCLE
+                        74
+                        75     CLEAR_FWY:
+00FF C2A2               76             CLR PWM2_FW
+0101 C2A3               77             CLR PWM2_BW
+0103 8000               78             SJMP NEXT_CYCLE
+                        79
+                        80     NEXT_CYCLE:
+0105 C28E               81             CLR TR1
+0107 85028D             82             MOV TH1, DUTY_CYCLE_HI
+010A 85038B             83             MOV TL1, DUTY_CYCLE_LO
+010D 32                 84             RETI
+                        85
+                        86     LOOP:
+010E 758CCB             87             MOV TH0, #PWM_PERIOD_HI
+0111 758AEB             88             MOV TL0, #PWM_PERIOD_LO
+0114 85028D             89             MOV TH1, DUTY_CYCLE_HI
+0117 85038B             90             MOV TL1, DUTY_CYCLE_LO
+011A 75A88A             91             MOV IE, #10001010b
+011D D200               92             SETB ISX_AXIS
+011F D28C               93             SETB TR0
+0121 D28E               94             SETB TR1
+0123 22                 95             RET
+                        96
+                        97     DELAY:
+                        98     ; START: Wait loop, time: 500 ms
+                        99     ; Clock: 11059 kHz (12 / MC)
+                       100     ; Used registers: R7, R6, R5, R3
+0124 7B0B              101             MOV     R3, #00Bh
+0126 7D1D              102             MOV     R5, #01Dh
+0128 7EF0              103             MOV     R6, #0F0h
+012A 7F01              104             MOV     R7, #001h
+012C 00                105             NOP
+012D DFFE              106             DJNZ    R7, $
+012F DEF9              107             DJNZ    R6, $-5
+0131 DDF5              108             DJNZ    R5, $-9
+0133 DBF1              109             DJNZ    R3, $-13
+0135 7FDB              110             MOV     R7, #0DBh
+0137 DFFE              111             DJNZ    R7, $
+0139 00                112             NOP
+                       113     ; Rest: 723.393 ns
+                       114     ; END: Wait loop
+                       115
+                       116     END
 ASSEMBLY COMPLETE, NO ERRORS FOUND, NO WARNINGS
 
 
@@ -98,8 +135,8 @@ B. . . . . . . . . . . . . . . . . .  D  ADDR  00F0H  NOT USED
 BDRCON . . . . . . . . . . . . . . .  D  ADDR  009BH  NOT USED
 BDRCON_1 . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
 BRL. . . . . . . . . . . . . . . . .  D  ADDR  009AH  NOT USED
-BWX. . . . . . . . . . . . . . . . .  C  ADDR  003AH
-BWY. . . . . . . . . . . . . . . . .  C  ADDR  004AH
+BWX. . . . . . . . . . . . . . . . .  C  ADDR  00D9H
+BWY. . . . . . . . . . . . . . . . .  C  ADDR  00E9H
 CCAP0H . . . . . . . . . . . . . . .  D  ADDR  00FAH  NOT USED
 CCAP0L . . . . . . . . . . . . . . .  D  ADDR  00EAH  NOT USED
 CCAP1H . . . . . . . . . . . . . . .  D  ADDR  00FBH  NOT USED
@@ -131,14 +168,15 @@ CKCON0 . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
 CKRL . . . . . . . . . . . . . . . .  D  ADDR  0097H  NOT USED
 CKSEL. . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
 CL . . . . . . . . . . . . . . . . .  D  ADDR  00E9H  NOT USED
-CLEAR_FWY. . . . . . . . . . . . . .  C  ADDR  0060H
-CLEAR_PWM. . . . . . . . . . . . . .  C  ADDR  0057H
+CLEAR_FWY. . . . . . . . . . . . . .  C  ADDR  00FFH
+CLEAR_PWM. . . . . . . . . . . . . .  C  ADDR  00F6H
 CLKREG . . . . . . . . . . . . . . .  D  ADDR  008FH  NOT USED
 CMOD . . . . . . . . . . . . . . . .  D  ADDR  00D9H  NOT USED
 CPRL2. . . . . . . . . . . . . . . .  B  ADDR  00C8H  NOT USED
 CR . . . . . . . . . . . . . . . . .  B  ADDR  00DEH  NOT USED
 CT2. . . . . . . . . . . . . . . . .  B  ADDR  00C9H  NOT USED
 CY . . . . . . . . . . . . . . . . .  B  ADDR  00D7H  NOT USED
+DELAY. . . . . . . . . . . . . . . .  C  ADDR  0124H
 DP0H . . . . . . . . . . . . . . . .  D  ADDR  0083H  NOT USED
 DP0L . . . . . . . . . . . . . . . .  D  ADDR  0082H  NOT USED
 DP1H . . . . . . . . . . . . . . . .  D  ADDR  0085H  NOT USED
@@ -163,8 +201,8 @@ EXTI0. . . . . . . . . . . . . . . .  C  ADDR  0003H  NOT USED
 EXTI1. . . . . . . . . . . . . . . .  C  ADDR  0013H  NOT USED
 F0 . . . . . . . . . . . . . . . . .  B  ADDR  00D5H  NOT USED
 FE . . . . . . . . . . . . . . . . .  B  ADDR  009FH  NOT USED
-FWX. . . . . . . . . . . . . . . . .  C  ADDR  0045H
-FWY. . . . . . . . . . . . . . . . .  C  ADDR  0052H
+FWX. . . . . . . . . . . . . . . . .  C  ADDR  00E4H
+FWY. . . . . . . . . . . . . . . . .  C  ADDR  00F1H
 IE . . . . . . . . . . . . . . . . .  D  ADDR  00A8H
 IE0. . . . . . . . . . . . . . . . .  B  ADDR  0089H  NOT USED
 IE1. . . . . . . . . . . . . . . . .  B  ADDR  008BH  NOT USED
@@ -183,9 +221,9 @@ IT1. . . . . . . . . . . . . . . . .  B  ADDR  008AH  NOT USED
 KBE. . . . . . . . . . . . . . . . .  D  ADDR  009DH  NOT USED
 KBF. . . . . . . . . . . . . . . . .  D  ADDR  009EH  NOT USED
 KBLS . . . . . . . . . . . . . . . .  D  ADDR  009CH  NOT USED
-LOOP . . . . . . . . . . . . . . . .  C  ADDR  006FH
-MAIN . . . . . . . . . . . . . . . .  C  ADDR  001DH
-NEXT_CYCLE . . . . . . . . . . . . .  C  ADDR  0066H
+LOOP . . . . . . . . . . . . . . . .  C  ADDR  010EH
+MAIN . . . . . . . . . . . . . . . .  C  ADDR  00ABH
+NEXT_CYCLE . . . . . . . . . . . . .  C  ADDR  0105H
 OSCCON . . . . . . . . . . . . . . .  D  ADDR  0086H  NOT USED
 OV . . . . . . . . . . . . . . . . .  B  ADDR  00D2H  NOT USED
 P. . . . . . . . . . . . . . . . . .  B  ADDR  00D0H  NOT USED
